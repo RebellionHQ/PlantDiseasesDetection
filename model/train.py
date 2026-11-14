@@ -100,7 +100,7 @@ def main():
     optimizer_ft = optim.Adam(model.parameters(), lr=1e-5)
 
     for epoch in range(3):
-        train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
+        train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer_ft, device)
         val_loss, val_acc = evaluate(model, test_loader, criterion, device)
 
         print(f"Epoch ({epoch + 1}/{FINE_TUNE_EPOCHS}) | TrainAcc: {train_acc:.4f} | ValAcc: {val_acc:.4f}")

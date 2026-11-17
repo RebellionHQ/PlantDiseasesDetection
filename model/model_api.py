@@ -7,9 +7,8 @@ from model import get_model
 
 class PlantAPI:
     def __init__(self, weights='./weights/model.pth', device=None):
-        if device is None:
-            device = torch.device("cpu")
-        else: self.device = torch.device(device)
+        
+        self.device = torch.device(device if device is not None else "cpu")
 
         # I WILL NOT DIE, I'LL WAIT HERE FOR YOU, IN MY TIME OF DYIIIING
         if not os.path.exists(weights):
@@ -69,3 +68,5 @@ def plant_api(image : str, weights : str = "./model/weights/model.pth"):
         _classifier_instance = PlantAPI(weights=weights)
 
     return _classifier_instance.predict(image)
+
+

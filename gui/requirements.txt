@@ -1,0 +1,5 @@
+flet==1.0.5
+flet-camera==1.0.5
+torch>=2.0
+torchvision>=0.15
+pillow>=10

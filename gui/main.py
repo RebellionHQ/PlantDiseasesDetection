@@ -23,6 +23,39 @@ AMBER_SOFT = "#FFF2E0"
 
 MAX_WIDTH = 460
 
+# (name, number of diseases besides "healthy", has a "healthy" class)
+SUPPORTED_PLANTS = [
+    ("Apple", 3, True),
+    ("Blueberry", 0, True),
+    ("Cherry", 1, True),
+    ("Corn", 3, True),
+    ("Grape", 3, True),
+    ("Orange", 1, False),
+    ("Peach", 1, True),
+    ("Pepper, bell", 1, True),
+    ("Potato", 2, True),
+    ("Raspberry", 0, True),
+    ("Soybean", 0, True),
+    ("Squash", 1, False),
+    ("Strawberry", 1, True),
+    ("Tomato", 9, True),
+]
+
+DISEASE_COUNT = sum(item[1] for item in SUPPORTED_PLANTS)
+
+
+def image_src(data: bytes) -> str:
+    """Turn image bytes into a data URI, which every Flet renderer can display."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        mime = "image/png"
+    elif data.startswith((b"GIF87a", b"GIF89a")):
+        mime = "image/gif"
+    elif data.startswith(b"RIFF") and data[8:12] == b"WEBP":
+        mime = "image/webp"
+    else:
+        mime = "image/jpeg"
+    return f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
+
 
 def format_time(value: str) -> str:
     try:
@@ -126,11 +159,21 @@ class PlantApp:
                 if count
                 else ft.Container(width=44)
             )
+        elif self.tab == 2:
+            title = "Plants & help"
+            subtitle = f"{len(SUPPORTED_PLANTS)} plants · {DISEASE_COUNT} diseases"
+            icon = ft.Icons.ECO
+            trailing = ft.Container(width=44)
         else:
             title = "Plant Doctor"
             subtitle = "Scan a leaf to detect diseases"
             icon = ft.Icons.ECO
-            trailing = ft.Container(width=44)
+            trailing = ft.IconButton(
+                ft.Icons.HELP_OUTLINE,
+                icon_color=MUTED,
+                tooltip="Which plants can I scan?",
+                on_click=self._open_help,
+            )
 
         return ft.Container(
             padding=ft.Padding.only(left=18, right=10, top=10, bottom=12),
@@ -168,6 +211,8 @@ class PlantApp:
     def _body(self):
         if self.tab == 1:
             return self._history_body()
+        if self.tab == 2:
+            return self._help_body()
         return ft.Container(
             expand=True,
             padding=ft.Padding.only(left=16, right=16, top=2),
@@ -176,13 +221,30 @@ class PlantApp:
                     self._preview(),
                     self._actions(),
                     self._result_area(),
-                    ft.Container(
-                        alignment=ft.Alignment.CENTER,
-                        content=ft.Text(
-                            "Use a clear photo of a single leaf in daylight.",
-                            size=11,
-                            color=MUTED,
-                        ),
+                    ft.Row(
+                        controls=[
+                            ft.Text(
+                                "Use a clear photo of a single leaf in daylight.",
+                                size=11,
+                                color=MUTED,
+                                expand=True,
+                            ),
+                            ft.TextButton(
+                                "Which plants?",
+                                icon=ft.Icons.HELP_OUTLINE,
+                                on_click=self._open_help,
+                                style=ft.ButtonStyle(
+                                    padding=ft.Padding.symmetric(
+                                        horizontal=6, vertical=0
+                                    ),
+                                    text_style=ft.TextStyle(size=11),
+                                    color=GREEN,
+                                    icon_color=GREEN,
+                                ),
+                            ),
+                        ],
+                        spacing=6,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
                 ],
                 spacing=14,
@@ -211,12 +273,21 @@ class PlantApp:
                         selected_icon=ft.Icons.HISTORY,
                         label="History",
                     ),
+                    ft.NavigationBarDestination(
+                        icon=ft.Icons.ECO_OUTLINED,
+                        selected_icon=ft.Icons.ECO,
+                        label="Plants",
+                    ),
                 ],
             ),
         )
 
     def _select_tab(self, event):
         self.tab = event.control.selected_index
+        self._render()
+
+    def _open_help(self, _event=None):
+        self.tab = 2
         self._render()
 
     def _preview(self):
@@ -261,16 +332,38 @@ class PlantApp:
                 ),
             )
 
+        image_data = self.scan.get("image") or b""
         image = ft.Container(
             width=width,
             height=248,
             border_radius=24,
             clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
             bgcolor="#DFE7DF",
-            content=ft.Image(
-                src=self.scan["image"],
-                fit=ft.BoxFit.COVER,
-                expand=True,
+            content=(
+                ft.Image(
+                    src=image_src(image_data),
+                    fit=ft.BoxFit.COVER,
+                    expand=True,
+                    gapless_playback=True,
+                    error_content=ft.Container(
+                        alignment=ft.Alignment.CENTER,
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.BROKEN_IMAGE, color=MUTED, size=32),
+                                ft.Text(
+                                    "Could not display this image",
+                                    size=12,
+                                    color=MUTED,
+                                ),
+                            ],
+                            spacing=8,
+                            tight=True,
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                    ),
+                )
+                if image_data
+                else ft.Icon(ft.Icons.BROKEN_IMAGE, color=MUTED, size=32)
             ),
         )
 
@@ -532,7 +625,7 @@ class PlantApp:
             clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
             bgcolor="#EDF3EE",
             alignment=ft.Alignment.CENTER,
-            content=ft.Image(src=image_data, fit=ft.BoxFit.COVER, expand=True)
+            content=ft.Image(src=image_src(image_data), fit=ft.BoxFit.COVER, expand=True)
             if image_data
             else ft.Icon(ft.Icons.IMAGE, color=MUTED, size=20),
         )
@@ -590,6 +683,216 @@ class PlantApp:
             ),
         )
 
+    def _help_body(self):
+        plant_rows = []
+        for index in range(0, len(SUPPORTED_PLANTS), 2):
+            pair = SUPPORTED_PLANTS[index : index + 2]
+            cards = [self._plant_card(item) for item in pair]
+            if len(cards) == 1:
+                cards.append(ft.Container(expand=True))
+            plant_rows.append(
+                ft.Row(
+                    controls=cards,
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                )
+            )
+
+        return ft.ListView(
+            controls=[
+                ft.Container(
+                    padding=16,
+                    bgcolor=GREEN_SOFT,
+                    border_radius=20,
+                    content=ft.Column(
+                        controls=[
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(
+                                        ft.Icons.HELP_OUTLINE, color=GREEN, size=20
+                                    ),
+                                    ft.Text(
+                                        "What can I scan?",
+                                        size=15,
+                                        weight=ft.FontWeight.W_600,
+                                        color=INK,
+                                    ),
+                                ],
+                                spacing=8,
+                            ),
+                            ft.Text(
+                                "The model recognizes "
+                                f"{len(SUPPORTED_PLANTS)} plants and {DISEASE_COUNT} "
+                                "leaf diseases, and can also tell when a leaf looks "
+                                "healthy.",
+                                size=12,
+                                color=INK,
+                            ),
+                        ],
+                        spacing=6,
+                    ),
+                ),
+                ft.Text(
+                    "Supported plants",
+                    size=13,
+                    weight=ft.FontWeight.W_600,
+                    color=INK,
+                ),
+                *plant_rows,
+                ft.Text(
+                    "Photo tips",
+                    size=13,
+                    weight=ft.FontWeight.W_600,
+                    color=INK,
+                ),
+                self._tips_card(),
+                ft.Container(
+                    padding=14,
+                    bgcolor=AMBER_SOFT,
+                    border_radius=18,
+                    content=ft.Row(
+                        controls=[
+                            ft.Icon(
+                                ft.Icons.INFO_OUTLINE, color="#C77700", size=20
+                            ),
+                            ft.Text(
+                                "Only these plants are recognized — photos of other "
+                                "plants may be misclassified. A photo without a leaf is "
+                                "detected as \"Background\".\n\n"
+                                "The camera works in a browser over localhost or HTTPS, "
+                                "and in the mobile app. If it does not start, use "
+                                "Gallery — it gives the same result.",
+                                size=11,
+                                color="#8A5A00",
+                                expand=True,
+                            ),
+                        ],
+                        spacing=10,
+                        vertical_alignment=ft.CrossAxisAlignment.START,
+                    ),
+                ),
+            ],
+            expand=True,
+            spacing=10,
+            padding=ft.Padding.only(left=16, right=16, top=2, bottom=16),
+        )
+
+    def _plant_card(self, plant):
+        name, diseases, healthy = plant
+        if diseases == 0:
+            subtitle = "Healthy check"
+        else:
+            subtitle = f"{diseases} disease" + ("" if diseases == 1 else "s")
+            if healthy:
+                subtitle += " + healthy"
+
+        return ft.Container(
+            expand=True,
+            padding=10,
+            border_radius=16,
+            bgcolor=WHITE,
+            border=ft.Border.all(1, LINE),
+            content=ft.Row(
+                controls=[
+                    ft.Container(
+                        width=36,
+                        height=36,
+                        border_radius=11,
+                        bgcolor=GREEN_SOFT,
+                        alignment=ft.Alignment.CENTER,
+                        content=ft.Icon(
+                            ft.Icons.LOCAL_FLORIST, color=GREEN, size=18
+                        ),
+                    ),
+                    ft.Column(
+                        controls=[
+                            ft.Text(
+                                name,
+                                size=13,
+                                weight=ft.FontWeight.W_600,
+                                color=INK,
+                                max_lines=1,
+                                overflow=ft.TextOverflow.ELLIPSIS,
+                            ),
+                            ft.Text(
+                                subtitle,
+                                size=10,
+                                color=MUTED,
+                                max_lines=1,
+                                overflow=ft.TextOverflow.ELLIPSIS,
+                            ),
+                        ],
+                        spacing=0,
+                        expand=True,
+                    ),
+                ],
+                spacing=10,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+        )
+
+    def _tips_card(self):
+        def tip(icon, title, text):
+            return ft.Row(
+                controls=[
+                    ft.Container(
+                        width=36,
+                        height=36,
+                        border_radius=11,
+                        bgcolor="#F4F8F2",
+                        alignment=ft.Alignment.CENTER,
+                        content=ft.Icon(icon, color=GREEN, size=18),
+                    ),
+                    ft.Column(
+                        controls=[
+                            ft.Text(
+                                title,
+                                size=12,
+                                weight=ft.FontWeight.W_600,
+                                color=INK,
+                            ),
+                            ft.Text(text, size=11, color=MUTED),
+                        ],
+                        spacing=0,
+                        expand=True,
+                    ),
+                ],
+                spacing=10,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+
+        return ft.Container(
+            padding=14,
+            border_radius=18,
+            bgcolor=WHITE,
+            border=ft.Border.all(1, LINE),
+            content=ft.Column(
+                controls=[
+                    tip(
+                        ft.Icons.CENTER_FOCUS_STRONG,
+                        "One leaf per photo",
+                        "Fill most of the frame with a single leaf.",
+                    ),
+                    tip(
+                        ft.Icons.WB_SUNNY_OUTLINED,
+                        "Good light",
+                        "Daylight, no harsh shadows or flash glare.",
+                    ),
+                    tip(
+                        ft.Icons.LANDSCAPE_OUTLINED,
+                        "Plain background",
+                        "A table, paper or the sky works best.",
+                    ),
+                    tip(
+                        ft.Icons.HD_OUTLINED,
+                        "Sharp and close",
+                        "Avoid blurry, dark or very small leaves.",
+                    ),
+                ],
+                spacing=12,
+            ),
+        )
+
     def _open_entry(self, entry: dict):
         self.scan = {
             "image": decode_image(entry),
@@ -631,29 +934,105 @@ class PlantApp:
             ft.PagePlatform.IOS,
         )
 
+    def _insecure_web_hint(self) -> str:
+        if not self.page.web:
+            return ""
+        url = (self.page.url or "").lower()
+        if not url.startswith("http://"):
+            return ""
+        if url.startswith(("http://localhost", "http://127.0.0.1")):
+            return ""
+        return (
+            "Browsers block the camera on a plain HTTP address. Open the app via "
+            "http://localhost or over HTTPS, or use Gallery instead."
+        )
+
+    def _camera_error_hint(self, error: Exception) -> str:
+        text = str(error).lower()
+        if any(word in text for word in ("permission", "notallowed", "denied")):
+            return (
+                "Camera access is blocked. Click the camera icon in the browser "
+                "address bar, allow access, then try again."
+            )
+        return self._insecure_web_hint()
+
+    def _camera_dialog(self, message: str):
+        self.page.show_dialog(
+            ft.AlertDialog(
+                title=ft.Text("Camera unavailable"),
+                content=ft.Text(message, size=13),
+                actions=[
+                    ft.TextButton(
+                        "Close", on_click=lambda _event: self.page.pop_dialog()
+                    ),
+                    ft.FilledButton(
+                        "Use Gallery", on_click=self._dialog_use_gallery
+                    ),
+                ],
+            )
+        )
+
+    async def _dialog_use_gallery(self, _event=None):
+        await self._pick_gallery(None)
+        self.page.pop_dialog()
+
+    async def _camera_use_gallery(self, _event=None):
+        self._close_camera()
+        await self._pick_gallery(None)
+
+    def _on_camera_state(self, event):
+        if self.camera is None:
+            return
+        if getattr(event, "has_error", False):
+            self.camera_error = (
+                getattr(event, "error_description", None)
+                or "The camera stopped unexpectedly."
+            )
+            self._render()
+
     async def _open_camera(self, _event):
         if fc is None:
-            self._toast("Camera support requires the flet-camera package.")
+            self._camera_dialog(
+                "The flet-camera package is not installed. Install the "
+                "dependencies from gui/requirements.txt to use the in-app "
+                "camera, or pick a photo from the gallery."
+            )
             return
         if not self._camera_supported():
-            self._toast("The camera works in the mobile or web app. Use Gallery here.")
+            self._camera_dialog(
+                "The live camera is only available in a web browser and in the "
+                "Android/iOS app. In the desktop window, use Gallery — it gives "
+                "the same result."
+            )
             return
         if self.camera is not None:
             return
 
-        self.camera = fc.Camera(
-            expand=True,
-            preview_enabled=True,
-            content=ft.Container(
-                alignment=ft.Alignment.CENTER,
-                content=ft.Icon(
-                    ft.Icons.CENTER_FOCUS_STRONG, color="#FFFFFF66", size=44
+        try:
+            self.camera = fc.Camera(
+                expand=True,
+                preview_enabled=True,
+                on_state_change=self._on_camera_state,
+                content=ft.Container(
+                    alignment=ft.Alignment.CENTER,
+                    content=ft.Icon(
+                        ft.Icons.CENTER_FOCUS_STRONG, color="#FFFFFF66", size=44
+                    ),
                 ),
-            ),
-        )
-        self.camera_ready = False
-        self.camera_error = None
-        self._render()
+            )
+            self.camera_ready = False
+            self.camera_error = None
+            self._render()
+        except Exception as error:
+            self.camera = None
+            self.camera_ready = False
+            self.camera_error = None
+            self._render()
+            self._camera_dialog(
+                f"The camera could not be started: {error}\n\n"
+                "You can still pick a photo from the gallery."
+            )
+            return
 
         try:
             cameras = await self.camera.get_available_cameras()
@@ -683,7 +1062,8 @@ class PlantApp:
                 return
             self.camera_ready = True
         except Exception as error:
-            self.camera_error = str(error)
+            hint = self._camera_error_hint(error)
+            self.camera_error = f"{error}" + (f"\n\n{hint}" if hint else "")
             self._render()
             return
 
@@ -746,12 +1126,26 @@ class PlantApp:
                             color=MUTED,
                             text_align=ft.TextAlign.CENTER,
                         ),
-                        ft.FilledButton(
-                            "Close",
-                            on_click=self._close_camera,
-                            style=ft.ButtonStyle(
-                                shape=ft.RoundedRectangleBorder(radius=12)
-                            ),
+                        ft.Row(
+                            controls=[
+                                ft.OutlinedButton(
+                                    "Close",
+                                    on_click=self._close_camera,
+                                    style=ft.ButtonStyle(
+                                        shape=ft.RoundedRectangleBorder(radius=12)
+                                    ),
+                                ),
+                                ft.FilledButton(
+                                    "Use Gallery",
+                                    icon=ft.Icons.PHOTO_LIBRARY,
+                                    on_click=self._camera_use_gallery,
+                                    style=ft.ButtonStyle(
+                                        shape=ft.RoundedRectangleBorder(radius=12)
+                                    ),
+                                ),
+                            ],
+                            spacing=10,
+                            alignment=ft.MainAxisAlignment.CENTER,
                         ),
                     ],
                     spacing=12,
@@ -877,4 +1271,11 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.run(main)
+    # Serve the app on localhost and open it in the browser. The live camera
+    # is not available in Flet's native desktop window, but works on localhost.
+    ft.run(
+        main,
+        view=ft.AppView.WEB_BROWSER,
+        host="127.0.0.1",
+        port=8550,
+    )

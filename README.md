@@ -1,77 +1,79 @@
 # 🌿 Plant Doctor
 
-Приложение для распознавания болезней растений по фотографии листа. Пользователь делает снимок через камеру или выбирает готовое изображение, а модель определяет растение, наиболее вероятное заболевание и уверенность предсказания.
+**English** | [Русский](README.ru.md)
 
-Проект собран на **Python**, **Flet** и **PyTorch** и запускается как веб-приложение в браузере.
+A plant disease detection app that identifies the plant, the most likely disease, and the model's confidence from a photo of a leaf. Users can take a picture with the camera or pick an existing image.
+
+Built with **Python**, **Flet**, and **PyTorch**, and runs as a web app in the browser.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Flet](https://img.shields.io/badge/UI-Flet-00B4D8)
 ![PyTorch](https://img.shields.io/badge/Model-PyTorch-EE4C2C?logo=pytorch&logoColor=white)
 ![Status](https://img.shields.io/badge/status-MVP-2F7D4F)
 
-## 🎓 О проекте
+## 🎓 Project Information
 
 | | |
 |---|---|
-| **Университет** | Брестский государственный технический университет |
-| **Кафедра** | ИИТ |
-| **Дисциплина** | Прикладные интеллектуальные системы |
-| **Группа** | ИИ-26 |
-| **Студенты** | Рубцов Д. А., Пилипук М. А. |
+| **University** | Brest State Technical University |
+| **Department** | IIT |
+| **Discipline** | Applied Intelligent Systems |
+| **Group** | AI-26 (ИИ-26) |
+| **Students** | D. A. Rubtsov, M. A. Pilipuk |
 
 ---
 
-## Возможности
+## Features
 
-- 📷 **Камера и галерея** — съёмка листа прямо в приложении или выбор фотографии из галереи.
-- 🖼️ **Предпросмотр** — выбранное фото отображается на экране, его можно заменить другим.
-- 🧠 **Классификация** — модель распознаёт 39 классов: 26 заболеваний, 12 состояний «здоров» и фон без листа; поддерживается 14 культур.
-- 📊 **Top-3 предсказания** — показываются класс, уверенность и три наиболее вероятных варианта.
-- 🩺 **Проверка качества фото** — приложение предупреждает, если изображение слишком тёмное, пересвеченное, размытое или имеет малое разрешение.
-- 🕘 **История анализов** — сохраняются последние 50 результатов с фото, датой, классом, уверенностью и источником.
-- 🌱 **Справка** — экран со списком поддерживаемых растений и подсказками по съёмке.
-- 🧯 **Обработка ошибок** — повреждённый файл, недоступная камера и другие проблемы показываются пользователю понятным сообщением.
+- 📷 **Camera and gallery** — capture a leaf directly in the app or pick a photo from the gallery.
+- 🖼️ **Preview** — the selected photo is shown on screen and can be replaced with another one.
+- 🧠 **Classification** — the model recognizes 39 classes: 26 diseases, 12 healthy states, and a no-leaf background; 14 crops are supported in total.
+- 📊 **Top-3 predictions** — the result shows the class, confidence, and the three most likely options.
+- 🩺 **Input photo checks** — the app warns when an image is too dark, overexposed, blurry, or too small.
+- 🕘 **Analysis history** — the last 50 results are stored with the photo, date, class, confidence, and source.
+- 🌱 **Help screen** — a list of supported plants and photo tips.
+- 🧯 **Error handling** — corrupted files, an unavailable camera, and other issues are reported with clear messages.
 
 ---
 
-## Как это работает
+## How It Works
 
 ```mermaid
 flowchart LR
-    A["Камера / Галерея"] --> B["Загрузка изображения<br/>PIL + EXIF"]
-    B --> C{"Проверка качества"}
-    C -- "Всё в порядке" --> D["MobileNetV2<br/>224 × 224"]
-    C -- "Есть проблемы" --> E["Диалог:<br/>выбрать другое / всё равно"]
-    E -- "Анализировать" --> D
-    D --> F["Класс · уверенность · Top-3"]
-    F --> G["История<br/>JSON + миниатюра"]
+    A["Camera / Gallery"] --> B["Image loading<br/>PIL + EXIF"]
+    B --> C{"Quality check"}
+    C -->|Passed| D["MobileNetV2<br/>224 × 224"]
+    C -->|Issues found| E["Dialog:<br/>choose another / analyze anyway"]
+    E -->|Analyze| D
+    D --> F["Class · confidence · Top-3"]
+    F --> G["History<br/>JSON + thumbnail"]
 ```
 
-1. Изображение читается через Pillow, применяется EXIF-поворот и приведение к RGB.
-2. Выполняется быстрая эвристическая проверка качества.
-3. Фото приводится к размеру 224×224 и нормализуется как при обучении.
-4. MobileNetV2 возвращает вероятности по 39 классам.
-5. Результат показывается в карточке и сохраняется в историю.
+1. The image is loaded with Pillow, EXIF orientation is applied, and it is converted to RGB.
+2. A fast heuristic quality check runs.
+3. The photo is resized to 224×224 and normalized the same way as during training.
+4. MobileNetV2 outputs probabilities for 39 classes.
+5. The result is displayed in a card and saved to history.
 
 ---
 
-## Поддерживаемые растения
+## Supported Plants
 
 Apple, Blueberry, Cherry, Corn, Grape, Orange, Peach, Pepper (bell), Potato, Raspberry, Soybean, Squash, Strawberry, Tomato.
 
-Модель также умеет определять здоровые листья и класс `Background_without_leaves` — фотографию без листа. Список классов зашит в чекпоинт модели, поэтому предсказания и интерфейс всегда согласованы.
+The model can also recognize healthy leaves and the `Background_without_leaves` class — a photo without a leaf. Class names are stored in the checkpoint, so predictions and the UI always stay in sync.
 
 ---
 
-## Быстрый старт
+## Quick Start
 
-### Требования
+### Requirements
 
 - Python **3.10+**
 - pip
-- Около 2–3 ГБ свободного места для PyTorch и зависимостей
+- About 2–3 GB of free space for PyTorch and dependencies
 
-### Установка
+### Installation
 
 ```bash
 git clone https://github.com/RebellionHQ/PlantDiseasesDetection.git
@@ -83,77 +85,78 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r gui/requirements.txt
 ```
 
-### Запуск
+### Run
 
-Из корня репозитория:
+From the repository root:
 
 ```bash
 python gui/main.py
 ```
 
-Приложение откроется в браузере по адресу **http://127.0.0.1:8550**.
+The app opens in your browser at **http://127.0.0.1:8550**.
 
-> **Камера в браузере** работает только на `localhost` или по HTTPS — это ограничение браузеров. Если камера недоступна, используйте кнопку **Gallery**: результат анализа будет тем же.
-
----
-
-## Использование
-
-1. Нажмите **Camera**, чтобы сделать снимок, или **Gallery**, чтобы выбрать файл.
-2. Если фото слишком тёмное, светлое, размытое или маленькое, появится диалог с причиной. Можно выбрать другое фото или нажать **Analyze anyway**.
-3. Дождитесь результата: приложение покажет растение, заболевание, уверенность и Top-3 предсказания.
-4. Все успешные анализы попадают во вкладку **History**, где хранятся последние 50 записей.
-5. Вкладка **Plants** содержит список поддерживаемых растений и советы по съёмке.
-
-История хранится локально:
-
-- по умолчанию — `~/.plant_doctor/history.json`;
-- путь можно переопределить переменной окружения `PLANT_APP_DATA`.
+> **Camera in the browser** only works on `localhost` or over HTTPS — this is a browser restriction. If the camera is unavailable, use the **Gallery** button: the analysis result is the same.
 
 ---
 
-## Структура проекта
+## Usage
+
+1. Click **Camera** to take a photo or **Gallery** to choose a file.
+2. If the photo is too dark, too bright, blurry, or too small, a dialog explains the issue. You can choose another photo or click **Analyze anyway**.
+3. Wait for the result: the app shows the plant, disease, confidence, and Top-3 predictions.
+4. Every successful analysis is saved to the **History** tab, which keeps the last 50 entries.
+5. The **Plants** tab lists supported plants and photo tips.
+
+History is stored locally:
+
+- by default at `~/.plant_doctor/history.json`;
+- the path can be overridden with the `PLANT_APP_DATA` environment variable.
+
+---
+
+## Project Structure
 
 ```text
 .
 ├── gui/
-│   ├── main.py           # интерфейс Flet и пользовательские сценарии
-│   ├── classifier.py     # загрузка изображения и обёртка над моделью
-│   ├── image_quality.py  # проверки разрешения, яркости и резкости
-│   ├── history.py        # локальное сохранение истории анализов
-│   └── requirements.txt  # зависимости приложения
+│   ├── main.py           # Flet UI and user flows
+│   ├── classifier.py     # image loading and model wrapper
+│   ├── image_quality.py  # resolution, brightness, and sharpness checks
+│   ├── history.py        # local analysis history
+│   └── requirements.txt  # app dependencies
 │
 ├── model/
-│   ├── model.py          # архитектура MobileNetV2 и загрузка весов
-│   ├── model_api.py      # инференс: класс, уверенность, Top-3
-│   ├── dataset.py        # загрузка датасета и аугментации
-│   ├── train.py          # обучение и fine-tuning
+│   ├── model.py          # MobileNetV2 architecture and weight loading
+│   ├── model_api.py      # inference: class, confidence, Top-3
+│   ├── dataset.py        # dataset loading and augmentations
+│   ├── train.py          # training and fine-tuning
 │   └── weights/
-│       └── model.pth     # обученные веса
+│       └── model.pth     # trained weights
 │
-└── README.md
+├── README.md             # English documentation
+└── README.ru.md          # Russian documentation
 ```
 
 ---
 
-## Модель
+## Model
 
-| Параметр | Значение |
+| Parameter | Value |
 |---|---|
-| Архитектура | MobileNetV2 (ImageNet pretrained) |
-| Классов | 39 |
-| Вход | 224 × 224, ImageNet-нормализация |
+| Architecture | MobileNetV2 (ImageNet pretrained) |
+| Classes | 39 |
+| Input | 224 × 224, ImageNet normalization |
 | Batch size | 32 |
-| Оптимизатор | Adam, 1e-3 → 1e-5 при fine-tuning |
-| Эпохи | 5 + 3 fine-tuning |
-| Устройство | CPU |
-| Веса | `model/weights/model.pth` |
+| Optimizer | Adam, 1e-3 → 1e-5 during fine-tuning |
+| Epochs | 5 + 3 fine-tuning |
+| Device | CPU |
+| Weights | `model/weights/model.pth` |
 
-Чекпоинт содержит `model_state_dict` и `class_names`, поэтому при загрузке не нужно отдельно описывать список классов.
+The checkpoint contains `model_state_dict` and `class_names`, so the class list does not have to be maintained separately.
 
-### Обучение
+### Training
 
-Датасет в репозиторий не входит. Для обучения нужна локальная папка `data/` в корне проекта со структурой `ImageFolder`:
+The dataset is not included in the repository. Training requires a local `data/` folder in the project root with an `ImageFolder` layout:
 
 ```text
 data/
@@ -165,28 +168,28 @@ data/
 └── ...
 ```
 
-Названия папок должны совпадать с классами PlantVillage-подобного набора. Запуск обучения из корня репозитория:
+Folder names must match the classes of a PlantVillage-like dataset. Run training from the repository root:
 
 ```bash
 pip install tqdm
 python model/train.py
 ```
 
-Скрипт обучит классификатор, выполнит fine-tuning и сохранит лучшие веса в `model/weights/model.pth`.
+The script trains the classifier, performs fine-tuning, and saves the best weights to `model/weights/model.pth`.
 
 ---
 
-## Технологии
+## Technologies
 
-- [Flet](https://flet.dev/) — кроссплатформенный интерфейс на Python
-- [PyTorch](https://pytorch.org/) и [torchvision](https://pytorch.org/vision/) — обучение и инференс
-- [Pillow](https://python-pillow.org/) — работа с изображениями
-- [NumPy](https://numpy.org/) — анализ яркости и резкости
-- [flet-camera](https://pypi.org/project/flet-camera/) — доступ к камере
+- [Flet](https://flet.dev/) — cross-platform UI in Python
+- [PyTorch](https://pytorch.org/) and [torchvision](https://pytorch.org/vision/) — training and inference
+- [Pillow](https://python-pillow.org/) — image processing
+- [NumPy](https://numpy.org/) — brightness and sharpness analysis
+- [flet-camera](https://pypi.org/project/flet-camera/) — camera access
 
 ---
 
 <p align="center">
-  Брестский государственный технический университет · Кафедра ИИТ<br>
-  Группа ИИ-26 · Рубцов Д. А. и Пилипук М. А. · 2026
+  Brest State Technical University · Department of Intelligent Information Technologies<br>
+  Group AI-26 (ИИ-26) · D. A. Rubtsov and M. A. Pilipuk · 2026
 </p>

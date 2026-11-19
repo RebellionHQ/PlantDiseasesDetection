@@ -6,6 +6,7 @@ import flet as ft
 
 from classifier import confidence_color, is_healthy, load_image, predict, to_jpeg
 from history import History
+from image_quality import assess_image
 
 try:
     import flet_camera as fc
@@ -886,7 +887,7 @@ class PlantApp:
                     tip(
                         ft.Icons.HD_OUTLINED,
                         "Sharp and close",
-                        "Avoid blurry, dark or very small leaves.",
+                        "Blurry, very dark, overexposed or tiny photos are flagged.",
                     ),
                 ],
                 spacing=12,
@@ -973,8 +974,8 @@ class PlantApp:
         )
 
     async def _dialog_use_gallery(self, _event=None):
-        await self._pick_gallery(None)
         self.page.pop_dialog()
+        await self._pick_gallery(None)
 
     async def _camera_use_gallery(self, _event=None):
         self._close_camera()
@@ -1243,6 +1244,83 @@ class PlantApp:
             self._toast("That file is not a supported image.")
             return
 
+        try:
+            report = assess_image(image)
+        except Exception:
+            # A failed quality check must never block a valid photo.
+            report = None
+
+        if report is not None and not report.ok:
+            self._quality_dialog(image, source, report)
+            return
+
+        await self._run_analysis(image, source)
+
+    def _quality_dialog(self, image, source: str, report):
+        issue_rows = []
+        for issue in report.issues:
+            issue_rows.append(
+                ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.ERROR_OUTLINE, color="#C77700", size=20),
+                        ft.Column(
+                            controls=[
+                                ft.Text(
+                                    issue.title,
+                                    size=13,
+                                    weight=ft.FontWeight.W_600,
+                                    color=INK,
+                                ),
+                                ft.Text(issue.message, size=12, color=MUTED),
+                            ],
+                            spacing=2,
+                            expand=True,
+                        ),
+                    ],
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                )
+            )
+
+        async def analyze_anyway(_event):
+            self.page.pop_dialog()
+            await self._run_analysis(image, source)
+
+        self.page.show_dialog(
+            ft.AlertDialog(
+                title=ft.Text("Check this photo"),
+                content=ft.Column(
+                    controls=[
+                        ft.Text(
+                            "The photo may not give a reliable result:",
+                            size=13,
+                            color=INK,
+                        ),
+                        *issue_rows,
+                        ft.Text(
+                            "For best results, use good light and keep the leaf "
+                            "in focus.",
+                            size=11,
+                            color=MUTED,
+                        ),
+                    ],
+                    spacing=14,
+                    tight=True,
+                ),
+                actions=[
+                    ft.TextButton(
+                        "Choose another",
+                        on_click=lambda _event: self.page.pop_dialog(),
+                    ),
+                    ft.FilledButton(
+                        "Analyze anyway",
+                        on_click=analyze_anyway,
+                    ),
+                ],
+            )
+        )
+
+    async def _run_analysis(self, image, source: str):
         self.tab = 0
         self.scan = {
             "image": to_jpeg(image, 900, 85),

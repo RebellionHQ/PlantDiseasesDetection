@@ -46,7 +46,6 @@ DISEASE_COUNT = sum(item[1] for item in SUPPORTED_PLANTS)
 
 
 def image_src(data: bytes) -> str:
-    """Turn image bytes into a data URI, which every Flet renderer can display."""
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         mime = "image/png"
     elif data.startswith((b"GIF87a", b"GIF89a")):

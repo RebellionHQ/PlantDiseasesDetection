@@ -1,30 +1,16 @@
-"""Heuristic quality checks for photos before they are sent to the model.
-
-The classifier sees a 224x224 crop, so tiny, dark, overexposed or blurry
-photos produce unreliable predictions. These checks catch the obvious cases
-and explain to the user what to fix.
-"""
-
 from dataclasses import dataclass
 
 import numpy as np
 from PIL import Image
 
-# At least this many pixels on the shorter side and in total.
 MIN_SHORT_SIDE = 256
 MIN_PIXELS = 100_000
 
-# Mean luminance on a 0..255 scale.
 MIN_BRIGHTNESS = 50.0
 
-# Fraction of pixels at or near pure white. This catches overexposure without
-# rejecting a well-lit leaf on a white paper or sky background.
 CLIPPED_LEVEL = 250
 MAX_CLIPPED_FRACTION = 0.5
 
-# Variance of the Laplacian on a grayscale copy, max side 512 px.
-# Sharp photos are usually well above 100; this threshold is deliberately
-# forgiving because shallow depth of field can blur part of a leaf.
 MIN_SHARPNESS = 50.0
 
 MAX_ANALYSIS_SIDE = 512
@@ -52,7 +38,6 @@ class QualityReport:
 
 
 def _flatten(image: Image.Image) -> Image.Image:
-    """Convert any mode to RGB, compositing transparency onto white."""
     if image.mode in ("RGBA", "LA") or (
         image.mode == "P" and "transparency" in image.info
     ):
@@ -72,7 +57,6 @@ def _clipped_fraction(gray: Image.Image) -> float:
 
 
 def _sharpness(gray: Image.Image) -> float:
-    """Variance of the 4-neighbour Laplacian, the classic blur metric."""
     sample = gray.copy()
     sample.thumbnail((MAX_ANALYSIS_SIDE, MAX_ANALYSIS_SIDE), Image.LANCZOS)
     data = np.asarray(sample, dtype=np.float32)
@@ -90,7 +74,6 @@ def _sharpness(gray: Image.Image) -> float:
 
 
 def assess_image(image: Image.Image) -> QualityReport:
-    """Return measurements and a list of problems found in the photo."""
     rgb = _flatten(image)
     width, height = rgb.size
     gray = rgb.convert("L")
@@ -137,7 +120,6 @@ def assess_image(image: Image.Image) -> QualityReport:
             )
         )
 
-    # Blur is not meaningful on very dark or blown-out photos.
     sharpness = None
     if not too_dark and not too_bright:
         sharpness = _sharpness(gray)
